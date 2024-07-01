@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+[RequireComponent(typeof(Renderer))]
 public class DrawOnObject : MonoBehaviour
 {
     public Camera cam;
@@ -16,6 +17,15 @@ public class DrawOnObject : MonoBehaviour
     private int brushSize = 10;
 
     private Vector2? lastInputPosition = null;
+    
+    private Renderer rend;
+    private void Start()
+    {
+        rend = GetComponent<Renderer>();
+
+        LoadTextureFromFile();
+        ClearTexture();
+    }
 
     private void Update()
     {
@@ -40,11 +50,6 @@ public class DrawOnObject : MonoBehaviour
         }
     }
 
-    private void Start()
-    {
-        LoadTextureFromFile();
-        ClearTexture();
-    }
 
 
 
@@ -55,7 +60,6 @@ public class DrawOnObject : MonoBehaviour
 
         if (Physics.Raycast(ray, out hit))
         {
-            Renderer rend = hit.transform.GetComponent<Renderer>();
             MeshCollider meshCollider = hit.collider as MeshCollider;
 
             if (rend == null || meshCollider == null)
@@ -144,7 +148,6 @@ public class DrawOnObject : MonoBehaviour
 
     public void SaveTextureToFile()
     {
-        Renderer rend = GetComponent<Renderer>();
         if (rend != null && rend.material != null && rend.material.mainTexture != null)
         {
             Texture2D tex = rend.material.mainTexture as Texture2D;
@@ -183,7 +186,6 @@ public class DrawOnObject : MonoBehaviour
 
     public void ClearTexture()
     {
-        Renderer rend = GetComponent<Renderer>();
         if (rend != null && rend.material != null && rend.material.mainTexture != null)
         {
             Texture2D tex = rend.material.mainTexture as Texture2D;
