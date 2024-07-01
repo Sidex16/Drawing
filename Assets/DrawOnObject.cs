@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using UnityEngine;
@@ -6,16 +7,16 @@ using UnityEngine.InputSystem;
 public class DrawOnObject : MonoBehaviour
 {
     public Camera cam;
-    
+
     public int textureWidth = 2048;
     public int textureHeight = 2048;
 
     private static Color drawColor = Color.white;
-    
+
     private int brushSize = 10;
-    
+
     private Vector2? lastInputPosition = null;
-    
+
     private void Update()
     {
         Vector2? inputPosition = null;
@@ -32,9 +33,10 @@ public class DrawOnObject : MonoBehaviour
         if (inputPosition.HasValue)
         {
             Draw(inputPosition.Value);
-        }else
+        }
+        else
         {
-            lastInputPosition = null; 
+            lastInputPosition = null;
         }
     }
 
@@ -44,7 +46,7 @@ public class DrawOnObject : MonoBehaviour
         ClearTexture();
     }
 
-    
+
 
     private void Draw(Vector2 touchPosition)
     {
@@ -56,39 +58,38 @@ public class DrawOnObject : MonoBehaviour
             Renderer rend = hit.transform.GetComponent<Renderer>();
             MeshCollider meshCollider = hit.collider as MeshCollider;
 
-            if (rend == null || rend.material == null || rend.material.mainTexture == null || meshCollider == null)
+            if (rend == null || meshCollider == null)
             {
                 lastInputPosition = null;
                 return;
             }
 
             Texture2D tex = rend.material.mainTexture as Texture2D;
-            if (tex != null)
-            {
-                Vector2 pixelUV = hit.textureCoord;
-                pixelUV.x *= tex.width;
-                pixelUV.y *= tex.height;
-
-                if (lastInputPosition.HasValue)
-                {
-                    Vector2 lastUV = lastInputPosition.Value;
-                    float distance = Vector2.Distance(lastUV, pixelUV);
-                    for (float i = 0; i < distance; i += 1f)
-                    {
-                        Vector2 interpolatedPoint = Vector2.Lerp(lastUV, pixelUV, i / distance);
-                        DrawCircle(tex, (int)interpolatedPoint.x, (int)interpolatedPoint.y, brushSize, drawColor);
-                    }
-                }
-
-               
-                DrawCircle(tex, (int)pixelUV.x, (int)pixelUV.y, brushSize, drawColor);
-                tex.Apply();
-
-                lastInputPosition = pixelUV; 
-            }else
+            if (tex == null)
             {
                 lastInputPosition = null;
+                return;
             }
+
+            Vector2 pixelUV = hit.textureCoord;
+            pixelUV.x *= tex.width;
+            pixelUV.y *= tex.height;
+
+            if (lastInputPosition.HasValue)
+            {
+                Vector2 lastUV = lastInputPosition.Value;
+                Vector2 currentUV = pixelUV;
+                BresenhamLine(tex, (int)lastUV.x, (int)lastUV.y, (int)currentUV.x, (int)currentUV.y, brushSize, drawColor);
+            }
+
+            
+
+
+
+            DrawCircle(tex, (int)pixelUV.x, (int)pixelUV.y, brushSize, drawColor);
+            tex.Apply();
+
+            lastInputPosition = pixelUV;
         }
         else
         {
@@ -96,23 +97,50 @@ public class DrawOnObject : MonoBehaviour
         }
     }
 
+    private void BresenhamLine(Texture2D tex, int x0, int y0, int x1, int y1, int radius, Color col)
+    {
+        int dx = Math.Abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+        int dy = -Math.Abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+        int err = dx + dy, e2;
+
+        for (; ; )
+        {
+            DrawCircle(tex, x0, y0, radius, col);
+            if (x0 == x1 && y0 == y1) break;
+            e2 = 2 * err;
+            if (e2 >= dy) { err += dy; x0 += sx; }
+            if (e2 <= dx) { err += dx; y0 += sy; }
+        }
+    }
 
 
     private void DrawCircle(Texture2D tex, int centerX, int centerY, int radius, Color col)
     {
-        for (int x = -radius; x <= radius; x++)
+        int startX = Mathf.Max(centerX - radius, 0);
+        int startY = Mathf.Max(centerY - radius, 0);
+        int endX = Mathf.Min(centerX + radius, tex.width);
+        int endY = Mathf.Min(centerY + radius, tex.height);
+
+        int width = endX - startX;
+        int height = endY - startY;
+
+        Color[] colors = tex.GetPixels(startX, startY, width, height);
+
+        for (int x = 0; x < width; x++)
         {
-            for (int y = -radius; y <= radius; y++)
+            for (int y = 0; y < height; y++)
             {
-                if (x * x + y * y <= radius * radius)
+                if ((x + startX - centerX) * (x + startX - centerX) + (y + startY - centerY) * (y + startY - centerY) <= radius * radius)
                 {
-                    int px = Mathf.Clamp(centerX + x, 0, tex.width - 1);
-                    int py = Mathf.Clamp(centerY + y, 0, tex.height - 1);
-                    tex.SetPixel(px, py, col);
+                    colors[y * width + x] = col;
                 }
             }
         }
+
+        tex.SetPixels(startX, startY, width, height, colors);
     }
+
+
 
     public void SaveTextureToFile()
     {
@@ -146,11 +174,11 @@ public class DrawOnObject : MonoBehaviour
                 {
                     rend.material.mainTexture = tex;
                 }
-                
+
             }
-            
+
         }
-        
+
     }
 
     public void ClearTexture()
@@ -182,4 +210,3 @@ public class DrawOnObject : MonoBehaviour
         brushSize = (int)size;
     }
 }
-
