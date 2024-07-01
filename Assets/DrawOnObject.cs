@@ -56,9 +56,8 @@ public class DrawOnObject : MonoBehaviour
     private void Draw(Vector2 touchPosition)
     {
         Ray ray = cam.ScreenPointToRay(touchPosition);
-        RaycastHit hit;
 
-        if (Physics.Raycast(ray, out hit))
+        if (Physics.Raycast(ray, out RaycastHit hit))
         {
             MeshCollider meshCollider = hit.collider as MeshCollider;
 
